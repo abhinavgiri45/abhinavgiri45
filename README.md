@@ -13,6 +13,7 @@
 ![](https://github-readme-stats.shion.dev/api/top-langs/?username=abhinavgiri45&theme=dark&hide_border=false&include_all_commits=true&count_private=true&layout=compact)
 
 ## 🏆 GitHub Trophies
+[![GitHub Developer Program](https://img.shields.io/badge/GitHub-Developer%20Program%20Member-181717?style=flat&logo=github&logoColor=white)](https://github.com/abhinavgiri45)
 ![](https://github-profile-trophy.vercel.app/?username=abhinavgiri45&theme=transparent&no-frame=false&no-bg=false&margin-w=4)
 
 ### ✍️ Random Dev Quote
