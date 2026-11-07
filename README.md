@@ -21,7 +21,7 @@
 I am a passionate software engineer, founder, and builder dedicated to crafting high-performance web applications, digital platforms, and developer tooling. 
 
 - 🚀 **Founder @ [PustakVerse](https://pustakverse.pages.dev/)**: Building a modern digital platform to make knowledge, curated books, and learning resources globally accessible.
-- 💻 **Creator @ [Giri Orbit](https://giri-orbit.pages.dev/)**: A complete cloud-free, privacy-first productivity suite featuring rich document authoring, kinetic presentation engines, and client-side PDF manipulation.
+- 💻 **Founder @ [Giri Orbit](https://giri-orbit.pages.dev/)**: A complete cloud-free, privacy-first productivity suite featuring rich document authoring, kinetic presentation engines, and client-side PDF manipulation.
 - 🛠️ **Engineering Focus**: Scalable distributed web systems, clean architecture, automated workflows, and modern UI engineering.
 
 ---
