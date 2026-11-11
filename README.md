@@ -44,7 +44,7 @@ I am a passionate software engineer, founder, and builder dedicated to crafting 
 ### 📊 GitHub Activity & Metrics
 
 <div align="center">
-  <img src="https://github-readme-stats.shion.dev/api?username=abhinavgiri45&show_icons=true&theme=radical&hide_border=false&include_all_commits=true&count_private=true&hide=prs&show=reviews,prs_merged,prs_merged_percentage,discussions_started,discussions_answered&rank_icon=github" alt="Abhinav's GitHub Stats" width="48%" />
+  <img src="https://raw.githubusercontent.com/abhinavgiri45/abhinavgiri45/output/github-stats.svg" alt="Abhinav's GitHub Stats" width="48%" />
   <img src="https://github-readme-stats.shion.dev/api/top-langs/?username=abhinavgiri45&layout=compact&theme=radical&hide_border=false&include_all_commits=true&count_private=true" alt="Top Languages" width="48%" />
 </div>
 

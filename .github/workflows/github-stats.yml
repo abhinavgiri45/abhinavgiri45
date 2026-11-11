@@ -1,0 +1,125 @@
+name: Generate GitHub Stats Cards
+
+on:
+  schedule:
+    - cron: "0 */6 * * *" # Every 6 hours
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  generate-stats:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate Stats SVG
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            // Fetch user data
+            const { data: user } = await github.rest.users.getByUsername({
+              username: context.repo.owner
+            });
+
+            // Fetch total merged PRs (this counts ALL PRs including to own repos)
+            const mergedPRs = await github.graphql(`
+              query($login: String!) {
+                user(login: $login) {
+                  pullRequests(states: MERGED) { totalCount }
+                  repositories(first: 100, ownerAffiliations: OWNER) {
+                    totalCount
+                    nodes { stargazerCount }
+                  }
+                  issues { totalCount }
+                  contributionsCollection {
+                    totalCommitContributions
+                    restrictedContributionsCount
+                  }
+                }
+              }
+            `, { login: context.repo.owner });
+
+            const userData = mergedPRs.user;
+            const totalStars = userData.repositories.nodes.reduce((sum, r) => sum + r.stargazerCount, 0);
+            const totalCommits = userData.contributionsCollection.totalCommitContributions + userData.contributionsCollection.restrictedContributionsCount;
+            const totalPRsMerged = userData.pullRequests.totalCount;
+            const totalIssues = userData.issues.totalCount;
+            const totalRepos = userData.repositories.totalCount;
+
+            // Calculate rank
+            let rank = 'C';
+            const score = totalCommits * 0.25 + totalPRsMerged * 0.5 + totalStars * 0.75 + totalIssues * 0.1;
+            if (score > 500) rank = 'A+';
+            else if (score > 200) rank = 'A';
+            else if (score > 100) rank = 'A-';
+            else if (score > 50) rank = 'B+';
+            else if (score > 25) rank = 'B';
+            else if (score > 10) rank = 'B-';
+
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="495" height="195" viewBox="0 0 495 195" fill="none">
+              <style>
+                .header { font: 600 18px 'Segoe UI', Ubuntu, sans-serif; fill: #fe428e; animation: fadeIn 0.8s ease-in-out forwards; }
+                .stat { font: 600 14px 'Segoe UI', Ubuntu, sans-serif; fill: #a9fef7; }
+                .stagger { opacity: 0; animation: fadeIn 0.3s ease-in-out forwards; }
+                .rank-text { font: 800 24px 'Segoe UI', Ubuntu, sans-serif; fill: #fe428e; }
+                .rank-circle { stroke: #fe428e; fill: none; stroke-width: 6; opacity: 0.2; }
+                .rank-circle-rim { stroke: #fe428e; fill: none; stroke-width: 6; stroke-dasharray: 250; stroke-dashoffset: ${250 - (score / 500) * 250}; transform-origin: -10px 8px; animation: rankAnimation 1s forwards ease-in-out; }
+                .bold { font-weight: 700; }
+                .icon { fill: #f8d847; display: block; }
+                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                @keyframes rankAnimation { from { stroke-dashoffset: 250; } to { stroke-dashoffset: ${250 - (score / 500) * 250}; } }
+              </style>
+              <rect x="0.5" y="0.5" rx="4.5" width="494" height="99%" stroke="#e4e2e2" fill="#141321" stroke-opacity="1"/>
+
+              <g transform="translate(25, 35)">
+                <text class="header" x="0" y="0">${user.name || user.login}'s GitHub Stats</text>
+              </g>
+
+              <g transform="translate(25, 55)">
+                <g class="stagger" style="animation-delay: 150ms" transform="translate(0, 0)">
+                  <svg class="icon" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="M8 .25a.75.75 0 01.673.418l1.882 3.815 4.21.612a.75.75 0 01.416 1.279l-3.046 2.97.719 4.192a.75.75 0 01-1.088.791L8 12.347l-3.766 1.98a.75.75 0 01-1.088-.79l.72-4.194L.818 6.374a.75.75 0 01.416-1.28l4.21-.611L7.327.668A.75.75 0 018 .25z"/></svg>
+                  <text class="stat bold" x="25" y="12.5">Total Stars Earned:</text>
+                  <text class="stat bold" x="220" y="12.5">${totalStars}</text>
+                </g>
+                <g class="stagger" style="animation-delay: 300ms" transform="translate(0, 25)">
+                  <svg class="icon" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="M1.643 3.143L.427 1.927A.25.25 0 000 2.104V5.75c0 .138.112.25.25.25h3.646a.25.25 0 00.177-.427L2.715 4.215a6.5 6.5 0 11-1.18 4.458.75.75 0 10-1.493.154 8.001 8.001 0 101.6-5.684zM7.75 4a.75.75 0 01.75.75v2.992l2.028.812a.75.75 0 01-.557 1.392l-2.5-1A.75.75 0 017 8.25v-3.5A.75.75 0 017.75 4z"/></svg>
+                  <text class="stat bold" x="25" y="12.5">Total Commits:</text>
+                  <text class="stat bold" x="220" y="12.5">${totalCommits}</text>
+                </g>
+                <g class="stagger" style="animation-delay: 450ms" transform="translate(0, 50)">
+                  <svg class="icon" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="M7.177 3.073L9.573.677A.25.25 0 0110 .854v4.792a.25.25 0 01-.427.177L7.177 3.427a.25.25 0 010-.354zM3.75 2.5a.75.75 0 100 1.5.75.75 0 000-1.5zm-2.25.75a2.25 2.25 0 113 2.122v5.256a2.251 2.251 0 11-1.5 0V5.372A2.25 2.25 0 011.5 3.25zM11 2.5h-1V4h1a1 1 0 011 1v5.628a2.251 2.251 0 101.5 0V5A2.5 2.5 0 0011 2.5zm1 10.25a.75.75 0 111.5 0 .75.75 0 01-1.5 0zM3.75 12a.75.75 0 100 1.5.75.75 0 000-1.5z"/></svg>
+                  <text class="stat bold" x="25" y="12.5">Total PRs Merged:</text>
+                  <text class="stat bold" x="220" y="12.5">${totalPRsMerged}</text>
+                </g>
+                <g class="stagger" style="animation-delay: 600ms" transform="translate(0, 75)">
+                  <svg class="icon" viewBox="0 0 16 16" width="16" height="16"><path fill-rule="evenodd" d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13zM0 8a8 8 0 1116 0A8 8 0 010 8zm9 3a1 1 0 11-2 0 1 1 0 012 0zm-.25-6.25a.75.75 0 00-1.5 0v3.5a.75.75 0 001.5 0v-3.5z"/></svg>
+                  <text class="stat bold" x="25" y="12.5">Total Issues:</text>
+                  <text class="stat bold" x="220" y="12.5">${totalIssues}</text>
+                </g>
+              </g>
+
+              <g transform="translate(365, 30)">
+                <circle class="rank-circle" cx="40" cy="50" r="40"/>
+                <circle class="rank-circle-rim" cx="40" cy="50" r="40"/>
+                <text class="rank-text" x="40" y="55" text-anchor="middle" dominant-baseline="central">${rank}</text>
+              </g>
+            </svg>`;
+
+            // Ensure dist directory exists
+            fs.mkdirSync('dist', { recursive: true });
+            fs.writeFileSync('dist/github-stats.svg', svg);
+            console.log(`Stats generated: Stars=${totalStars}, Commits=${totalCommits}, PRs Merged=${totalPRsMerged}, Issues=${totalIssues}, Rank=${rank}`);
+
+      - name: Push to output branch
+        uses: crazy-max/ghaction-github-pages@v4
+        with:
+          target_branch: output
+          build_dir: dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
