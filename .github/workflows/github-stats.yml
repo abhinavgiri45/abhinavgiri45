@@ -20,7 +20,7 @@ jobs:
       - name: Generate Stats SVG
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GH_PAT }}
           script: |
             const fs = require('fs');
 
