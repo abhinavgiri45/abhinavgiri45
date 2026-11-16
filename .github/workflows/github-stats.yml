@@ -6,6 +6,8 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
+    paths-ignore:
+      - 'dist/**'
 
 jobs:
   generate-stats:
@@ -27,11 +29,24 @@ jobs:
               username: context.repo.owner
             });
 
-            // Fetch total merged PRs (this counts ALL PRs including to own repos)
-            const mergedPRs = await github.graphql(`
+            // Use Search API to count merged PRs (counts ALL repos including own)
+            const { data: mergedPRSearch } = await github.rest.search.issuesAndPullRequests({
+              q: `author:${context.repo.owner} type:pr is:merged`,
+              per_page: 1
+            });
+            const totalPRsMerged = mergedPRSearch.total_count;
+
+            // Use Search API to count all PRs
+            const { data: allPRSearch } = await github.rest.search.issuesAndPullRequests({
+              q: `author:${context.repo.owner} type:pr`,
+              per_page: 1
+            });
+            const totalPRs = allPRSearch.total_count;
+
+            // Fetch repos and other data via GraphQL
+            const userData = await github.graphql(`
               query($login: String!) {
                 user(login: $login) {
-                  pullRequests(states: MERGED) { totalCount }
                   repositories(first: 100, ownerAffiliations: OWNER) {
                     totalCount
                     nodes { stargazerCount }
@@ -45,14 +60,13 @@ jobs:
               }
             `, { login: context.repo.owner });
 
-            const userData = mergedPRs.user;
-            const totalStars = userData.repositories.nodes.reduce((sum, r) => sum + r.stargazerCount, 0);
-            const totalCommits = userData.contributionsCollection.totalCommitContributions + userData.contributionsCollection.restrictedContributionsCount;
-            const totalPRsMerged = userData.pullRequests.totalCount;
-            const totalIssues = userData.issues.totalCount;
-            const totalRepos = userData.repositories.totalCount;
+            const u = userData.user;
+            const totalStars = u.repositories.nodes.reduce((sum, r) => sum + r.stargazerCount, 0);
+            const totalCommits = u.contributionsCollection.totalCommitContributions + u.contributionsCollection.restrictedContributionsCount;
+            const totalIssues = u.issues.totalCount;
+            const totalRepos = u.repositories.totalCount;
 
-            // Calculate rank
+            // Calculate rank based on all contributions
             let rank = 'C';
             const score = totalCommits * 0.25 + totalPRsMerged * 0.5 + totalStars * 0.75 + totalIssues * 0.1;
             if (score > 500) rank = 'A+';
@@ -62,6 +76,8 @@ jobs:
             else if (score > 25) rank = 'B';
             else if (score > 10) rank = 'B-';
 
+            console.log(`Stats: Stars=${totalStars}, Commits=${totalCommits}, PRs=${totalPRs}, PRs Merged=${totalPRsMerged}, Issues=${totalIssues}, Rank=${rank}`);
+
             const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="495" height="195" viewBox="0 0 495 195" fill="none">
               <style>
                 .header { font: 600 18px 'Segoe UI', Ubuntu, sans-serif; fill: #fe428e; animation: fadeIn 0.8s ease-in-out forwards; }
@@ -69,11 +85,11 @@ jobs:
                 .stagger { opacity: 0; animation: fadeIn 0.3s ease-in-out forwards; }
                 .rank-text { font: 800 24px 'Segoe UI', Ubuntu, sans-serif; fill: #fe428e; }
                 .rank-circle { stroke: #fe428e; fill: none; stroke-width: 6; opacity: 0.2; }
-                .rank-circle-rim { stroke: #fe428e; fill: none; stroke-width: 6; stroke-dasharray: 250; stroke-dashoffset: ${250 - (score / 500) * 250}; transform-origin: -10px 8px; animation: rankAnimation 1s forwards ease-in-out; }
+                .rank-circle-rim { stroke: #fe428e; fill: none; stroke-width: 6; stroke-dasharray: 250; stroke-dashoffset: ${250 - Math.min(score / 500, 1) * 250}; transform-origin: -10px 8px; animation: rankAnimation 1s forwards ease-in-out; }
                 .bold { font-weight: 700; }
                 .icon { fill: #f8d847; display: block; }
                 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-                @keyframes rankAnimation { from { stroke-dashoffset: 250; } to { stroke-dashoffset: ${250 - (score / 500) * 250}; } }
+                @keyframes rankAnimation { from { stroke-dashoffset: 250; } to { stroke-dashoffset: ${250 - Math.min(score / 500, 1) * 250}; } }
               </style>
               <rect x="0.5" y="0.5" rx="4.5" width="494" height="99%" stroke="#e4e2e2" fill="#141321" stroke-opacity="1"/>
 
@@ -114,7 +130,6 @@ jobs:
             // Ensure dist directory exists
             fs.mkdirSync('dist', { recursive: true });
             fs.writeFileSync('dist/github-stats.svg', svg);
-            console.log(`Stats generated: Stars=${totalStars}, Commits=${totalCommits}, PRs Merged=${totalPRsMerged}, Issues=${totalIssues}, Rank=${rank}`);
 
       - name: Push to output branch
         uses: crazy-max/ghaction-github-pages@v4
